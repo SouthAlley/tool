@@ -1,45 +1,22 @@
 import re
 import sys
+import os
+import time
 import ipaddress
 import urllib.request
 import urllib.error
+import concurrent.futures
 from collections import defaultdict
 from pathlib import Path
 from typing import Optional
 
 # ──────────────────────────────────────────────
-# 配置
+# 配置与预编译正则
 # ──────────────────────────────────────────────
 
 TIMEOUT = 30
 USER_AGENT = 'Surge iOS/3374'
-
-# ──────────────────────────────────────────────
-# 1. 下载规则文件
-# ──────────────────────────────────────────────
-
-def download_rules(url: str) -> list[str]:
-    """下载单个规则文件，返回行列表"""
-    try:
-        req = urllib.request.Request(
-            url,
-            headers={
-                'User-Agent': USER_AGENT,
-                'Accept-Language': 'en-us',
-            }
-        )
-        with urllib.request.urlopen(req, timeout=TIMEOUT) as response:
-            content = response.read().decode('utf-8', errors='ignore')
-            return content.splitlines()
-    except Exception as e:
-        print(f"[WARN] 下载失败: {url}")
-        print(f"       错误: {e}")
-        return []
-
-
-# ──────────────────────────────────────────────
-# 2. 规则标准化
-# ──────────────────────────────────────────────
+MAX_DOWNLOAD_WORKERS = 5  # 并发下载线程数
 
 VALID_TYPES = {
     "DOMAIN", "DOMAIN-SUFFIX", "DOMAIN-KEYWORD",
@@ -48,7 +25,43 @@ VALID_TYPES = {
     "AND", "OR", "NOT",
 }
 
+# 预编译正则，提升匹配性能
 RULE_RE = re.compile(r'^([A-Z0-9\-]+),(.+?)(?:,([^,]+))?$')
+HOSTS_RE = re.compile(r'^(?:0\.0\.0\.0|127\.0\.0\.1)\s+(\S+)$')
+DOMAIN_RE = re.compile(r'^[a-z0-9]([a-z0-9\-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9\-]*[a-z0-9])?)*$', re.IGNORECASE)
+SUFFIX_NO_RESOLVE_RE = re.compile(r',no-resolve\s*$', flags=re.IGNORECASE)
+SUFFIX_POLICY_RE = re.compile(r',(DIRECT|REJECT|PROXY)\s*$', flags=re.IGNORECASE)
+
+
+# ──────────────────────────────────────────────
+# 1. 下载规则文件 (带重试与异常处理)
+# ──────────────────────────────────────────────
+
+def download_rules(url: str, retries: int = 3) -> list[str]:
+    """下载单个规则文件，返回行列表，带重试机制"""
+    for attempt in range(retries):
+        try:
+            req = urllib.request.Request(
+                url,
+                headers={
+                    'User-Agent': USER_AGENT,
+                    'Accept-Language': 'en-us',
+                }
+            )
+            with urllib.request.urlopen(req, timeout=TIMEOUT) as response:
+                content = response.read().decode('utf-8', errors='ignore')
+                return content.splitlines()
+        except Exception as e:
+            if attempt < retries - 1:
+                time.sleep(2)  # 失败后稍作等待再重试
+            else:
+                print(f"[WARN] 下载失败 ({attempt+1}/{retries}): {url} -> {e}")
+    return []
+
+
+# ──────────────────────────────────────────────
+# 2. 规则标准化
+# ──────────────────────────────────────────────
 
 def normalize_line(raw: str) -> Optional[str]:
     """标准化单行规则"""
@@ -68,7 +81,7 @@ def normalize_line(raw: str) -> Optional[str]:
         return f"DOMAIN-SUFFIX,{domain}"
 
     # hosts 格式：0.0.0.0 example.com
-    m = re.match(r'^(?:0\.0\.0\.0|127\.0\.0\.1)\s+(\S+)$', line)
+    m = HOSTS_RE.match(line)
     if m:
         domain = m.group(1)
         if domain in ('localhost', '0.0.0.0', '127.0.0.1', '::1'):
@@ -76,7 +89,7 @@ def normalize_line(raw: str) -> Optional[str]:
         return f"DOMAIN,{domain}"
 
     # 纯域名（无前缀）
-    if re.match(r'^[a-z0-9]([a-z0-9\-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9\-]*[a-z0-9])?)*$', line, re.IGNORECASE):
+    if DOMAIN_RE.match(line):
         return f"DOMAIN,{line.lower()}"
 
     # 统一别名
@@ -98,8 +111,8 @@ def normalize_line(raw: str) -> Optional[str]:
     )
     
     # 删除 no-resolve / policy 等后缀
-    line = re.sub(r',no-resolve\s*$', '', line, flags=re.IGNORECASE)
-    line = re.sub(r',(DIRECT|REJECT|PROXY)\s*$', '', line, flags=re.IGNORECASE)
+    line = SUFFIX_NO_RESOLVE_RE.sub('', line)
+    line = SUFFIX_POLICY_RE.sub('', line)
 
     m = RULE_RE.match(line)
     if not m:
@@ -122,7 +135,7 @@ def normalize_line(raw: str) -> Optional[str]:
         # 去掉开头的通配点
         value = value.lstrip('*.')
         # 验证域名合法性（基本检查）
-        if not re.match(r'^[a-z0-9]([a-z0-9\-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9\-]*[a-z0-9])?)*$', value):
+        if not DOMAIN_RE.match(value):
             return None
 
     # IP 标准化
@@ -137,34 +150,45 @@ def normalize_line(raw: str) -> Optional[str]:
 
 
 # ──────────────────────────────────────────────
-# 3. 域名 Trie 树去重
+# 3. 域名 Trie 树与关键词加速去重
 # ──────────────────────────────────────────────
 
 class DomainTree:
     def __init__(self):
         self._trie = {}
         self._keywords = []
+        self._keyword_regex = None
 
     def add_keyword(self, kw: str):
-        self._keywords.append(kw)
+        """收集关键词"""
+        if kw:
+            self._keywords.append(kw)
+
+    def build_keyword_matcher(self):
+        """预编译所有关键词正则，极大加速后续匹配"""
+        if self._keywords:
+            escaped_kws = [re.escape(kw) for kw in self._keywords]
+            self._keyword_regex = re.compile('|'.join(escaped_kws))
 
     def _covered_by_keyword(self, domain: str) -> bool:
-        return any(kw in domain for kw in self._keywords)
+        if not self._keywords:
+            return False
+        if self._keyword_regex is None:
+            self.build_keyword_matcher()
+        return self._keyword_regex.search(domain) is not None
 
     def _insert_suffix(self, domain: str) -> bool:
         """插入 DOMAIN-SUFFIX，若父后缀已存在则返回 False"""
-        labels = domain.split('.')[::-1]  # 反转：com.example.sub
+        labels = domain.split('.')[::-1]
         node = self._trie
 
         for label in labels:
             if '__end__' in node:
-                # 父后缀已存在，当前规则冗余
                 return False
             if label not in node:
                 node[label] = {}
             node = node[label]
 
-        # 标记终点并清除所有子节点（子域名都冗余）
         node.clear()
         node['__end__'] = True
         return True
@@ -183,7 +207,6 @@ class DomainTree:
 
     def add(self, rtype: str, value: str) -> bool:
         """尝试添加规则，返回是否被采纳"""
-        # KEYWORD 优先级最高
         if self._covered_by_keyword(value):
             return False
 
@@ -236,7 +259,6 @@ def process_rule_directory(rule_dir: Path):
     print(f"处理规则目录: {rule_dir.name}")
     print("=" * 70)
 
-    # 检查必需文件
     if not rule_list_file.exists():
         print(f"[ERROR] 找不到 {rule_list_file}")
         return
@@ -255,13 +277,19 @@ def process_rule_directory(rule_dir: Path):
         print("[WARN] rule-list.ini 中没有有效 URL")
         return
 
-    # ── 2. 下载所有规则 ───────────────────────
+    # ── 2. 并发下载所有规则 ───────────────────────
     all_lines = []
-    for i, url in enumerate(urls, 1):
-        print(f"[{i}/{len(urls)}] {url}")
-        lines = download_rules(url)
-        all_lines.extend(lines)
-        print(f"          ✓ {len(lines)} 行")
+    
+    def fetch(url):
+        return url, download_rules(url)
+
+    print(f"[INFO] 并发下载 {len(urls)} 个规则文件...")
+    with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_DOWNLOAD_WORKERS) as executor:
+        future_to_url = {executor.submit(fetch, u): u for u in urls}
+        for i, future in enumerate(concurrent.futures.as_completed(future_to_url), 1):
+            url, lines = future.result()
+            print(f"[{i}/{len(urls)}] ✓ {len(lines)} 行 <- {url}")
+            all_lines.extend(lines)
 
     # ── 3. 读取 add.ini ───────────────────────
     if add_file.exists():
@@ -288,22 +316,23 @@ def process_rule_directory(rule_dir: Path):
                 buckets[rtype].append(value)
 
     # ── 5. 域名去重 ───────────────────────────
-    print("[INFO] 域名规则去重...")
+    print("[INFO] 域名规则去重 (Trie & Regex 加速)...")
     tree = DomainTree()
 
-    # KEYWORD 优先（覆盖范围最大）
+    # 先收集 KEYWORD，预编译加速引擎
     kw_kept = []
     for val in sorted(set(buckets.get('DOMAIN-KEYWORD', []))):
         tree.add_keyword(val)
         kw_kept.append(f"DOMAIN-KEYWORD,{val}")
+    tree.build_keyword_matcher()
 
-    # SUFFIX（建立 Trie）
+    # 插入 SUFFIX
     suffix_kept = []
     for val in sorted(set(buckets.get('DOMAIN-SUFFIX', []))):
-        if tree._insert_suffix(val):
+        if tree.add('DOMAIN-SUFFIX', val):
             suffix_kept.append(f"DOMAIN-SUFFIX,{val}")
 
-    # DOMAIN（精确匹配）
+    # 检查 DOMAIN
     domain_kept = []
     for val in sorted(set(buckets.get('DOMAIN', []))):
         if tree.add('DOMAIN', val):
@@ -339,16 +368,14 @@ def process_rule_directory(rule_dir: Path):
         other_kept
     )
 
-    # ── 10. 应用 del.ini 过滤 ─────────────────
+    # ── 10. 应用 del.ini 过滤 (tuple 加速) ──────
     if del_file.exists():
         with open(del_file, 'r', encoding='utf-8', errors='ignore') as f:
-            endings = {l.strip() for l in f if l.strip()}
+            # 转换为 tuple，配合 endswith 在 C 层极大提升速度
+            endings = tuple(l.strip() for l in f if l.strip())
         if endings:
             original_count = len(final_rules)
-            final_rules = [
-                r for r in final_rules
-                if not any(r.endswith(e) for e in endings)
-            ]
+            final_rules = [r for r in final_rules if not r.endswith(endings)]
             removed = original_count - len(final_rules)
             print(f"[INFO] 应用删除规则: 过滤 {removed} 条")
 
@@ -371,10 +398,11 @@ def process_rule_directory(rule_dir: Path):
             f.write(r + '\n')
 
     # ── 13. 输出统计 ──────────────────────────
+    rel_path = os.path.relpath(output_file)
     print("\n" + "=" * 70)
     print(f"✅ 处理完成: {rule_dir.name}")
     print("=" * 70)
-    print(f"  输出文件        : {output_file.relative_to(Path.cwd())}")
+    print(f"  输出文件        : {rel_path}")
     print(f"  总规则数        : {total}")
     print(f"    DOMAIN-KEYWORD : {len(kw_kept)}")
     print(f"    DOMAIN-SUFFIX  : {len(suffix_kept)}")
@@ -400,7 +428,6 @@ def main():
             process_rule_directory(rule_dir)
         except Exception as e:
             print(f"\n[ERROR] 处理 {rule_dir} 失败:")
-            print(f"        {e}")
             import traceback
             traceback.print_exc()
 
