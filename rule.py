@@ -18,11 +18,28 @@ TIMEOUT = 30
 USER_AGENT = 'Surge iOS/3374'
 MAX_DOWNLOAD_WORKERS = 5  # 并发下载线程数
 
+# 补充了所有支持的规则类型
 VALID_TYPES = {
-    "DOMAIN", "DOMAIN-SUFFIX", "DOMAIN-KEYWORD",
+    "DOMAIN", "DOMAIN-SUFFIX", "DOMAIN-KEYWORD", "DOMAIN-WILDCARD",
     "IP-CIDR", "IP-CIDR6",
-    "USER-AGENT",
+    "USER-AGENT", "URL-REGEX", "PROCESS-NAME",
     "AND", "OR", "NOT",
+}
+
+# 规则的最终输出排序权重
+ORDER_DICT = {
+    "AND": 1,
+    "OR": 2,
+    "NOT": 3,
+    "DOMAIN": 4,
+    "DOMAIN-SUFFIX": 5,
+    "DOMAIN-KEYWORD": 6,
+    "DOMAIN-WILDCARD": 7,
+    "IP-CIDR": 8,
+    "IP-CIDR6": 9,
+    "USER-AGENT": 10,
+    "URL-REGEX": 11,
+    "PROCESS-NAME": 12
 }
 
 # 预编译正则，提升匹配性能
@@ -294,7 +311,6 @@ def process_rule_directory(rule_dir: Path):
                 line = line.strip()
                 if not line or line.startswith('#'):
                     continue
-                # 如果包含 TAG: 前缀，则识别为标签预处理模式
                 if line.upper().startswith('TAG:'):
                     pre_tags.append(line[4:].strip())
                 else:
@@ -304,10 +320,9 @@ def process_rule_directory(rule_dir: Path):
     # ── 5. 执行标签模式预过滤 (刚下载完后) ───────
     if pre_tags:
         original_count = len(all_lines)
-        # 只要原始行内包含该标签，就将其剔除
         all_lines = [line for line in all_lines if not any(tag in line for tag in pre_tags)]
         removed = original_count - len(all_lines)
-        print(f"[INFO] 标签模式预过滤: 删除了 {removed} 条原始规则 (匹配标签: {', '.join(pre_tags)})")
+        print(f"[INFO] 标签模式预过滤: 删除了 {removed} 条原始规则")
 
     # ── 6. 标准化 ─────────────────────────────
     print(f"[INFO] 标准化 {len(all_lines)} 行...")
@@ -331,20 +346,17 @@ def process_rule_directory(rule_dir: Path):
     print("[INFO] 域名规则去重 (Trie & Regex 加速)...")
     tree = DomainTree()
 
-    # 先收集 KEYWORD，预编译加速引擎
     kw_kept = []
     for val in sorted(set(buckets.get('DOMAIN-KEYWORD', []))):
         tree.add_keyword(val)
         kw_kept.append(f"DOMAIN-KEYWORD,{val}")
     tree.build_keyword_matcher()
 
-    # 插入 SUFFIX
     suffix_kept = []
     for val in sorted(set(buckets.get('DOMAIN-SUFFIX', []))):
         if tree.add('DOMAIN-SUFFIX', val):
             suffix_kept.append(f"DOMAIN-SUFFIX,{val}")
 
-    # 检查 DOMAIN
     domain_kept = []
     for val in sorted(set(buckets.get('DOMAIN', []))):
         if tree.add('DOMAIN', val):
@@ -352,12 +364,8 @@ def process_rule_directory(rule_dir: Path):
 
     # ── 8. IP 聚合 ────────────────────────────
     print("[INFO] IP CIDR 聚合...")
-    ip4_rules = aggregate_cidrs(
-        list(set(buckets.get('IP-CIDR', []))), version=4
-    )
-    ip6_rules = aggregate_cidrs(
-        list(set(buckets.get('IP-CIDR6', []))), version=6
-    )
+    ip4_rules = aggregate_cidrs(list(set(buckets.get('IP-CIDR', []))), version=4)
+    ip6_rules = aggregate_cidrs(list(set(buckets.get('IP-CIDR6', []))), version=6)
 
     # ── 9. 其他规则 ───────────────────────────
     other_kept = []
@@ -367,11 +375,11 @@ def process_rule_directory(rule_dir: Path):
         for val in sorted(set(buckets[rtype])):
             other_kept.append(f"{rtype},{val}")
 
-    # ── 10. 复合规则去重 ───────────────────────
     compound_kept = sorted(set(compound_rules))
 
-    # ── 11. 合并所有规则 ───────────────────────
+    # ── 10. 合并全部规则 ───────────────────────
     final_rules = (
+        compound_kept +
         kw_kept +
         suffix_kept +
         domain_kept +
@@ -380,28 +388,32 @@ def process_rule_directory(rule_dir: Path):
         other_kept
     )
 
-    # ── 12. 应用后缀过滤 (处理末尾精确匹配) ──────
+    # ── 11. 应用后缀过滤 ───────────────────────
     if post_filters:
         original_count = len(final_rules)
         final_rules = [r for r in final_rules if not r.endswith(post_filters)]
         removed = original_count - len(final_rules)
         print(f"[INFO] 最终后缀过滤: 删除了 {removed} 条")
 
-    # ── 13. 过滤过短规则 ──────────────────────
+    # ── 12. 过滤过短规则 ───────────────────────
     final_rules = [r for r in final_rules if len(r) > 5]
 
+    # ── 13. 全局规则排序 (按指定类型与字母序) ───
+    def sort_rules_key(rule_line: str):
+        # 提取类型（逗号前的内容）
+        rtype = rule_line.split(',', 1)[0]
+        # 返回: (类型优先级, 规则全文本)
+        # 未在 ORDER_DICT 中的类型会被置于最后 (999)
+        return (ORDER_DICT.get(rtype, 999), rule_line)
+
+    final_rules.sort(key=sort_rules_key)
+
     # ── 14. 写入输出 ──────────────────────────
-    total = len(final_rules) + len(compound_kept)
+    total = len(final_rules)
     
     with open(output_file, 'w', encoding='utf-8') as f:
         f.write(f"# Total: {total} rules\n")
         f.write("# " + "=" * 66 + "\n")
-        
-        if compound_kept:
-            f.write("\n# Compound Rules\n")
-            for r in compound_kept:
-                f.write(r + '\n')
-        
         for r in final_rules:
             f.write(r + '\n')
 
@@ -412,13 +424,6 @@ def process_rule_directory(rule_dir: Path):
     print("=" * 70)
     print(f"  输出文件        : {rel_path}")
     print(f"  总规则数        : {total}")
-    print(f"    DOMAIN-KEYWORD : {len(kw_kept)}")
-    print(f"    DOMAIN-SUFFIX  : {len(suffix_kept)}")
-    print(f"    DOMAIN         : {len(domain_kept)}")
-    print(f"    IP-CIDR        : {len(ip4_rules)}")
-    print(f"    IP-CIDR6       : {len(ip6_rules)}")
-    print(f"    OTHER          : {len(other_kept)}")
-    print(f"    COMPOUND       : {len(compound_kept)}")
     print("=" * 70 + "\n")
 
 
