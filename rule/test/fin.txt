@@ -1,4 +1,4 @@
-# Total: 29 rules
+# Total: 28 rules
 # ==================================================================
 DOMAIN-SUFFIX,cdn-telegram.org
 DOMAIN-SUFFIX,graph.org
@@ -10,7 +10,6 @@ DOMAIN-SUFFIX,telegra.ph
 DOMAIN-SUFFIX,telegram.dog
 DOMAIN-SUFFIX,telegram.me
 DOMAIN-SUFFIX,telegram.org
-DOMAIN-SUFFIX,telegram.space
 DOMAIN-SUFFIX,telesco.pe
 DOMAIN-SUFFIX,tg.dev
 DOMAIN-SUFFIX,tx.me
