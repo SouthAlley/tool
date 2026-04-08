@@ -1,5 +1,4 @@
 # Total: 29 rules
-# Updated: test
 # ==================================================================
 DOMAIN-SUFFIX,cdn-telegram.org
 DOMAIN-SUFFIX,graph.org
