@@ -1,11 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-rule_processor.py - 通用规则处理器
-用法：python rule_processor.py <规则目录路径>
-示例：python rule_processor.py rule/ad
-"""
-
 import re
 import sys
 import ipaddress
@@ -20,7 +12,7 @@ from typing import Optional
 # ──────────────────────────────────────────────
 
 TIMEOUT = 30
-USER_AGENT = 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15'
+USER_AGENT = 'Surge iOS/3374'
 
 # ──────────────────────────────────────────────
 # 1. 下载规则文件
@@ -89,6 +81,7 @@ def normalize_line(raw: str) -> Optional[str]:
 
     # 统一别名
     line = (line
+            .replace('host-wildcard',  'DOMAIN-WILDCARD')
             .replace('host-suffix',    'DOMAIN-SUFFIX')
             .replace('host-keyword',   'DOMAIN-KEYWORD')
             .replace('host',           'DOMAIN')
@@ -101,6 +94,7 @@ def normalize_line(raw: str) -> Optional[str]:
             .replace('domain-keyword', 'DOMAIN-KEYWORD')
             .replace('domain',         'DOMAIN')
             .replace('user-agent',     'USER-AGENT')
+            .replace('ip-cidr',        'IP-CIDR')           
     )
     
     # 删除 no-resolve / policy 等后缀
@@ -230,18 +224,6 @@ def aggregate_cidrs(networks: list[str], version: int) -> list[str]:
 # ──────────────────────────────────────────────
 
 def process_rule_directory(rule_dir: Path):
-    """
-    处理指定的规则目录
-    
-    目录结构：
-      rule_dir/
-        ├── attach/
-        │   ├── rule-list.ini  (必需)
-        │   ├── del.ini        (可选)
-        │   └── add.ini        (可选)
-        └── fin.txt            (输出)
-    """
-    
     rule_dir = Path(rule_dir).resolve()
     attach_dir = rule_dir / 'attach'
     
@@ -378,7 +360,6 @@ def process_rule_directory(rule_dir: Path):
     
     with open(output_file, 'w', encoding='utf-8') as f:
         f.write(f"# Total: {total} rules\n")
-        f.write(f"# Updated: {rule_dir.name}\n")
         f.write("# " + "=" * 66 + "\n")
         
         if compound_kept:
@@ -411,8 +392,7 @@ def process_rule_directory(rule_dir: Path):
 
 def main():
     if len(sys.argv) < 2:
-        print("用法: python rule_processor.py <规则目录1> [规则目录2] ...")
-        print("示例: python rule_processor.py rule/ad rule/proxy")
+        print("示例: python rule.py rule/ad rule/proxy")
         sys.exit(1)
 
     for rule_dir in sys.argv[1:]:
