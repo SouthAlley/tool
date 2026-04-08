@@ -160,12 +160,10 @@ class DomainTree:
         self._keyword_regex = None
 
     def add_keyword(self, kw: str):
-        """收集关键词"""
         if kw:
             self._keywords.append(kw)
 
     def build_keyword_matcher(self):
-        """预编译所有关键词正则，极大加速后续匹配"""
         if self._keywords:
             escaped_kws = [re.escape(kw) for kw in self._keywords]
             self._keyword_regex = re.compile('|'.join(escaped_kws))
@@ -178,23 +176,19 @@ class DomainTree:
         return self._keyword_regex.search(domain) is not None
 
     def _insert_suffix(self, domain: str) -> bool:
-        """插入 DOMAIN-SUFFIX，若父后缀已存在则返回 False"""
         labels = domain.split('.')[::-1]
         node = self._trie
-
         for label in labels:
             if '__end__' in node:
                 return False
             if label not in node:
                 node[label] = {}
             node = node[label]
-
         node.clear()
         node['__end__'] = True
         return True
 
     def _is_covered_by_suffix(self, domain: str) -> bool:
-        """检查 domain 是否被已有 DOMAIN-SUFFIX 覆盖"""
         labels = domain.split('.')[::-1]
         node = self._trie
         for label in labels:
@@ -206,16 +200,12 @@ class DomainTree:
         return '__end__' in node
 
     def add(self, rtype: str, value: str) -> bool:
-        """尝试添加规则，返回是否被采纳"""
         if self._covered_by_keyword(value):
             return False
-
         if rtype == 'DOMAIN-SUFFIX':
             return self._insert_suffix(value)
-
         if rtype == 'DOMAIN':
             return not self._is_covered_by_suffix(value)
-
         return True
 
 
@@ -224,7 +214,6 @@ class DomainTree:
 # ──────────────────────────────────────────────
 
 def aggregate_cidrs(networks: list[str], version: int) -> list[str]:
-    """聚合合并 CIDR"""
     parsed = []
     for n in networks:
         try:
@@ -233,10 +222,8 @@ def aggregate_cidrs(networks: list[str], version: int) -> list[str]:
                 parsed.append(net)
         except ValueError:
             continue
-
     if not parsed:
         return []
-
     collapsed = list(ipaddress.collapse_addresses(parsed))
     prefix = "IP-CIDR" if version == 4 else "IP-CIDR6"
     return [f"{prefix},{net},no-resolve" for net in collapsed]
@@ -297,8 +284,33 @@ def process_rule_directory(rule_dir: Path):
             all_lines.extend(f.readlines())
         print(f"\n[INFO] 加载手动规则: {add_file.name}")
 
-    # ── 4. 标准化 ─────────────────────────────
-    print(f"\n[INFO] 标准化 {len(all_lines)} 行...")
+    # ── 4. 读取 del.ini 并解析标签与后缀过滤 ──────
+    pre_tags = []        # 标签模式（下载后立刻过滤）
+    post_filters = []    # 后缀模式（最后生成时过滤）
+
+    if del_file.exists():
+        with open(del_file, 'r', encoding='utf-8', errors='ignore') as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith('#'):
+                    continue
+                # 如果包含 TAG: 前缀，则识别为标签预处理模式
+                if line.upper().startswith('TAG:'):
+                    pre_tags.append(line[4:].strip())
+                else:
+                    post_filters.append(line)
+        post_filters = tuple(post_filters)
+
+    # ── 5. 执行标签模式预过滤 (刚下载完后) ───────
+    if pre_tags:
+        original_count = len(all_lines)
+        # 只要原始行内包含该标签，就将其剔除
+        all_lines = [line for line in all_lines if not any(tag in line for tag in pre_tags)]
+        removed = original_count - len(all_lines)
+        print(f"[INFO] 标签模式预过滤: 删除了 {removed} 条原始规则 (匹配标签: {', '.join(pre_tags)})")
+
+    # ── 6. 标准化 ─────────────────────────────
+    print(f"[INFO] 标准化 {len(all_lines)} 行...")
     buckets = defaultdict(list)
     compound_rules = []
 
@@ -315,7 +327,7 @@ def process_rule_directory(rule_dir: Path):
             if value:
                 buckets[rtype].append(value)
 
-    # ── 5. 域名去重 ───────────────────────────
+    # ── 7. 域名去重 ───────────────────────────
     print("[INFO] 域名规则去重 (Trie & Regex 加速)...")
     tree = DomainTree()
 
@@ -338,7 +350,7 @@ def process_rule_directory(rule_dir: Path):
         if tree.add('DOMAIN', val):
             domain_kept.append(f"DOMAIN,{val}")
 
-    # ── 6. IP 聚合 ────────────────────────────
+    # ── 8. IP 聚合 ────────────────────────────
     print("[INFO] IP CIDR 聚合...")
     ip4_rules = aggregate_cidrs(
         list(set(buckets.get('IP-CIDR', []))), version=4
@@ -347,7 +359,7 @@ def process_rule_directory(rule_dir: Path):
         list(set(buckets.get('IP-CIDR6', []))), version=6
     )
 
-    # ── 7. 其他规则 ───────────────────────────
+    # ── 9. 其他规则 ───────────────────────────
     other_kept = []
     for rtype in buckets:
         if rtype in ('DOMAIN', 'DOMAIN-SUFFIX', 'DOMAIN-KEYWORD', 'IP-CIDR', 'IP-CIDR6'):
@@ -355,10 +367,10 @@ def process_rule_directory(rule_dir: Path):
         for val in sorted(set(buckets[rtype])):
             other_kept.append(f"{rtype},{val}")
 
-    # ── 8. 复合规则去重 ───────────────────────
+    # ── 10. 复合规则去重 ───────────────────────
     compound_kept = sorted(set(compound_rules))
 
-    # ── 9. 合并所有规则 ───────────────────────
+    # ── 11. 合并所有规则 ───────────────────────
     final_rules = (
         kw_kept +
         suffix_kept +
@@ -368,21 +380,17 @@ def process_rule_directory(rule_dir: Path):
         other_kept
     )
 
-    # ── 10. 应用 del.ini 过滤 (tuple 加速) ──────
-    if del_file.exists():
-        with open(del_file, 'r', encoding='utf-8', errors='ignore') as f:
-            # 转换为 tuple，配合 endswith 在 C 层极大提升速度
-            endings = tuple(l.strip() for l in f if l.strip())
-        if endings:
-            original_count = len(final_rules)
-            final_rules = [r for r in final_rules if not r.endswith(endings)]
-            removed = original_count - len(final_rules)
-            print(f"[INFO] 应用删除规则: 过滤 {removed} 条")
+    # ── 12. 应用后缀过滤 (处理末尾精确匹配) ──────
+    if post_filters:
+        original_count = len(final_rules)
+        final_rules = [r for r in final_rules if not r.endswith(post_filters)]
+        removed = original_count - len(final_rules)
+        print(f"[INFO] 最终后缀过滤: 删除了 {removed} 条")
 
-    # ── 11. 过滤过短规则 ──────────────────────
+    # ── 13. 过滤过短规则 ──────────────────────
     final_rules = [r for r in final_rules if len(r) > 5]
 
-    # ── 12. 写入输出 ──────────────────────────
+    # ── 14. 写入输出 ──────────────────────────
     total = len(final_rules) + len(compound_kept)
     
     with open(output_file, 'w', encoding='utf-8') as f:
@@ -397,7 +405,7 @@ def process_rule_directory(rule_dir: Path):
         for r in final_rules:
             f.write(r + '\n')
 
-    # ── 13. 输出统计 ──────────────────────────
+    # ── 15. 输出统计 ──────────────────────────
     rel_path = os.path.relpath(output_file)
     print("\n" + "=" * 70)
     print(f"✅ 处理完成: {rule_dir.name}")
