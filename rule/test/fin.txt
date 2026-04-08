@@ -1,4 +1,4 @@
-# Total: 1045 rules
+# Total: 1011 rules
 # ==================================================================
 DOMAIN,69shuba.cx
 DOMAIN,copilot.microsoft.com
@@ -113,9 +113,7 @@ DOMAIN-SUFFIX,api.ai
 DOMAIN-SUFFIX,apigee.com
 DOMAIN-SUFFIX,app-measurement.com
 DOMAIN-SUFFIX,app-measurement.net
-DOMAIN-SUFFIX,appbridge.ca
 DOMAIN-SUFFIX,appbridge.io
-DOMAIN-SUFFIX,appbridge.it
 DOMAIN-SUFFIX,appspot.com
 DOMAIN-SUFFIX,apture.com
 DOMAIN-SUFFIX,area120.com
@@ -130,7 +128,6 @@ DOMAIN-SUFFIX,bandpage.com
 DOMAIN-SUFFIX,baselinestudy.com
 DOMAIN-SUFFIX,baselinestudy.org
 DOMAIN-SUFFIX,bazel.build
-DOMAIN-SUFFIX,bbc.co
 DOMAIN-SUFFIX,bbc.com
 DOMAIN-SUFFIX,bdn.dev
 DOMAIN-SUFFIX,beatthatquote.com
@@ -147,7 +144,6 @@ DOMAIN-SUFFIX,browserleaks.com
 DOMAIN-SUFFIX,browserleaks.org
 DOMAIN-SUFFIX,bugzilla.org
 DOMAIN-SUFFIX,bumpshare.com
-DOMAIN-SUFFIX,bumptop.ca
 DOMAIN-SUFFIX,bumptop.com
 DOMAIN-SUFFIX,bumptop.net
 DOMAIN-SUFFIX,bumptop.org
@@ -163,7 +159,6 @@ DOMAIN-SUFFIX,cdninstagram.com
 DOMAIN-SUFFIX,certificate-transparency.org
 DOMAIN-SUFFIX,charlestonroadregistry.com
 DOMAIN-SUFFIX,chat.com
-DOMAIN-SUFFIX,chat.gle
 DOMAIN-SUFFIX,chatgpt.com
 DOMAIN-SUFFIX,chrome.com
 DOMAIN-SUFFIX,chromebook.com
@@ -347,9 +342,7 @@ DOMAIN-SUFFIX,google.co.cr
 DOMAIN-SUFFIX,google.co.id
 DOMAIN-SUFFIX,google.co.il
 DOMAIN-SUFFIX,google.co.in
-DOMAIN-SUFFIX,google.co.jp
 DOMAIN-SUFFIX,google.co.ke
-DOMAIN-SUFFIX,google.co.kr
 DOMAIN-SUFFIX,google.co.ls
 DOMAIN-SUFFIX,google.co.ma
 DOMAIN-SUFFIX,google.co.mz
@@ -357,7 +350,6 @@ DOMAIN-SUFFIX,google.co.nz
 DOMAIN-SUFFIX,google.co.th
 DOMAIN-SUFFIX,google.co.tz
 DOMAIN-SUFFIX,google.co.ug
-DOMAIN-SUFFIX,google.co.uk
 DOMAIN-SUFFIX,google.co.uz
 DOMAIN-SUFFIX,google.co.ve
 DOMAIN-SUFFIX,google.co.vi
@@ -377,42 +369,23 @@ DOMAIN-SUFFIX,google.com.et
 DOMAIN-SUFFIX,google.com.fj
 DOMAIN-SUFFIX,google.com.gh
 DOMAIN-SUFFIX,google.com.gi
-DOMAIN-SUFFIX,google.com.gt
-DOMAIN-SUFFIX,google.com.hk
 DOMAIN-SUFFIX,google.com.jm
 DOMAIN-SUFFIX,google.com.kh
 DOMAIN-SUFFIX,google.com.kw
 DOMAIN-SUFFIX,google.com.lb
-DOMAIN-SUFFIX,google.com.ly
 DOMAIN-SUFFIX,google.com.mm
 DOMAIN-SUFFIX,google.com.mt
-DOMAIN-SUFFIX,google.com.mx
-DOMAIN-SUFFIX,google.com.my
 DOMAIN-SUFFIX,google.com.na
 DOMAIN-SUFFIX,google.com.ng
-DOMAIN-SUFFIX,google.com.ni
 DOMAIN-SUFFIX,google.com.np
 DOMAIN-SUFFIX,google.com.om
-DOMAIN-SUFFIX,google.com.pa
-DOMAIN-SUFFIX,google.com.pe
 DOMAIN-SUFFIX,google.com.pg
-DOMAIN-SUFFIX,google.com.ph
-DOMAIN-SUFFIX,google.com.pk
-DOMAIN-SUFFIX,google.com.pr
-DOMAIN-SUFFIX,google.com.py
 DOMAIN-SUFFIX,google.com.qa
 DOMAIN-SUFFIX,google.com.sa
 DOMAIN-SUFFIX,google.com.sb
-DOMAIN-SUFFIX,google.com.sg
 DOMAIN-SUFFIX,google.com.sl
-DOMAIN-SUFFIX,google.com.sv
 DOMAIN-SUFFIX,google.com.tj
-DOMAIN-SUFFIX,google.com.tr
-DOMAIN-SUFFIX,google.com.tw
-DOMAIN-SUFFIX,google.com.ua
-DOMAIN-SUFFIX,google.com.uy
 DOMAIN-SUFFIX,google.com.vc
-DOMAIN-SUFFIX,google.com.vn
 DOMAIN-SUFFIX,google.cv
 DOMAIN-SUFFIX,google.cz
 DOMAIN-SUFFIX,google.de
@@ -440,7 +413,6 @@ DOMAIN-SUFFIX,google.ie
 DOMAIN-SUFFIX,google.im
 DOMAIN-SUFFIX,google.iq
 DOMAIN-SUFFIX,google.is
-DOMAIN-SUFFIX,google.it
 DOMAIN-SUFFIX,google.je
 DOMAIN-SUFFIX,google.jo
 DOMAIN-SUFFIX,google.kg
@@ -475,7 +447,6 @@ DOMAIN-SUFFIX,google.ps
 DOMAIN-SUFFIX,google.pt
 DOMAIN-SUFFIX,google.ro
 DOMAIN-SUFFIX,google.rs
-DOMAIN-SUFFIX,google.ru
 DOMAIN-SUFFIX,google.rw
 DOMAIN-SUFFIX,google.sc
 DOMAIN-SUFFIX,google.se
@@ -511,7 +482,6 @@ DOMAIN-SUFFIX,googlecapital.com
 DOMAIN-SUFFIX,googlecert.net
 DOMAIN-SUFFIX,googlecode.com
 DOMAIN-SUFFIX,googlecommerce.com
-DOMAIN-SUFFIX,googlecompare.co.uk
 DOMAIN-SUFFIX,googledanmark.com
 DOMAIN-SUFFIX,googledomains.com
 DOMAIN-SUFFIX,googledrive.com
@@ -560,10 +530,8 @@ DOMAIN-SUFFIX,hdrplusdata.org
 DOMAIN-SUFFIX,hindiweb.com
 DOMAIN-SUFFIX,hltv.org
 DOMAIN-SUFFIX,hockeyapp.net
-DOMAIN-SUFFIX,howtogetmo.co.uk
 DOMAIN-SUFFIX,html5rocks.com
 DOMAIN-SUFFIX,hwgo.com
-DOMAIN-SUFFIX,hysteria.network
 DOMAIN-SUFFIX,iam.soy
 DOMAIN-SUFFIX,iamremarkable.org
 DOMAIN-SUFFIX,igoogle.com
@@ -763,7 +731,6 @@ DOMAIN-SUFFIX,tfhub.dev
 DOMAIN-SUFFIX,thecleversense.com
 DOMAIN-SUFFIX,thegooglestore.com
 DOMAIN-SUFFIX,themoviedb.org
-DOMAIN-SUFFIX,thinkquarterly.co.uk
 DOMAIN-SUFFIX,thinkquarterly.com
 DOMAIN-SUFFIX,thinkwithgoogle.com
 DOMAIN-SUFFIX,threads.com
@@ -781,7 +748,6 @@ DOMAIN-SUFFIX,twittercommunity.com
 DOMAIN-SUFFIX,twitterflightschool.com
 DOMAIN-SUFFIX,twitterinc.com
 DOMAIN-SUFFIX,twitteroauth.com
-DOMAIN-SUFFIX,twitterstat.us
 DOMAIN-SUFFIX,twtrdns.net
 DOMAIN-SUFFIX,twttr.com
 DOMAIN-SUFFIX,twttr.net
