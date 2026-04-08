@@ -398,13 +398,20 @@ def process_rule_directory(rule_dir: Path):
     # ── 12. 过滤过短规则 ───────────────────────
     final_rules = [r for r in final_rules if len(r) > 5]
 
-    # ── 13. 全局规则排序 (按指定类型与字母序) ───
+    # ── 13. 全局规则排序 (按指定类型、顶级域名优先、字母序) ───
     def sort_rules_key(rule_line: str):
-        # 提取类型（逗号前的内容）
-        rtype = rule_line.split(',', 1)[0]
-        # 返回: (类型优先级, 规则全文本)
-        # 未在 ORDER_DICT 中的类型会被置于最后 (999)
-        return (ORDER_DICT.get(rtype, 999), rule_line)
+        parts = rule_line.split(',', 1)
+        rtype = parts[0]
+        value = parts[1] if len(parts) > 1 else ""
+        
+        # 1. 类型优先级 (未在 ORDER_DICT 中的类型置于最后)
+        priority = ORDER_DICT.get(rtype, 999)
+        
+        # 2. 判断是否为顶级域名 (针对 DOMAIN 相关类型，且没有包含 ".")
+        is_tld = 0 if (rtype.startswith('DOMAIN') and '.' not in value) else 1
+        
+        # 3. 返回排序权重: (类型优先级, 是否顶级域名, 规则全文本字母序)
+        return (priority, is_tld, rule_line)
 
     final_rules.sort(key=sort_rules_key)
 
