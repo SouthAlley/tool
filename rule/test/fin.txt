@@ -11,7 +11,7 @@ DOMAIN,reddit.app.link
 DOMAIN,sakuracat.link
 DOMAIN,sub.store
 DOMAIN,sydney.bing.com
-DOMAIN,vps.domaining
+DOMAIN,vps.hosting
 DOMAIN-SUFFIX,and
 DOMAIN-SUFFIX,ar
 DOMAIN-SUFFIX,au
@@ -672,7 +672,7 @@ DOMAIN-SUFFIX,pypa.io
 DOMAIN-SUFFIX,pypi.io
 DOMAIN-SUFFIX,pypi.org
 DOMAIN-SUFFIX,python.org
-DOMAIN-SUFFIX,pythondomained.org
+DOMAIN-SUFFIX,pythonhosted.org
 DOMAIN-SUFFIX,qingr.moe
 DOMAIN-SUFFIX,quay.io
 DOMAIN-SUFFIX,questvisual.com
