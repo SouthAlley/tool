@@ -16,9 +16,8 @@ from typing import Optional
 
 TIMEOUT = 30
 USER_AGENT = 'Surge iOS/3374'
-MAX_DOWNLOAD_WORKERS = 5  # 并发下载线程数
+MAX_DOWNLOAD_WORKERS = 5
 
-# 补充了所有支持的规则类型
 VALID_TYPES = {
     "DOMAIN", "DOMAIN-SUFFIX", "DOMAIN-KEYWORD", "DOMAIN-WILDCARD",
     "IP-CIDR", "IP-CIDR6",
@@ -26,51 +25,53 @@ VALID_TYPES = {
     "AND", "OR", "NOT",
 }
 
-# 规则的最终输出排序权重
 ORDER_DICT = {
-    "AND": 1,
-    "OR": 2,
-    "NOT": 3,
-    "DOMAIN": 4,
-    "DOMAIN-SUFFIX": 5,
-    "DOMAIN-KEYWORD": 6,
-    "DOMAIN-WILDCARD": 7,
-    "IP-CIDR": 8,
-    "IP-CIDR6": 9,
-    "USER-AGENT": 10,
-    "URL-REGEX": 11,
-    "PROCESS-NAME": 12
+    "AND": 1, "OR": 2, "NOT": 3,
+    "DOMAIN": 4, "DOMAIN-SUFFIX": 5, "DOMAIN-KEYWORD": 6, "DOMAIN-WILDCARD": 7,
+    "IP-CIDR": 8, "IP-CIDR6": 9,
+    "USER-AGENT": 10, "URL-REGEX": 11, "PROCESS-NAME": 12,
 }
 
-# 预编译正则，提升匹配性能
-RULE_RE = re.compile(r'^([A-Z0-9\-]+),(.+?)(?:,([^,]+))?$')
+TYPE_ALIAS = {
+    'HOST': 'DOMAIN', 'host': 'DOMAIN',
+    'HOST-SUFFIX': 'DOMAIN-SUFFIX', 'host-suffix': 'DOMAIN-SUFFIX',
+    'HOST-KEYWORD': 'DOMAIN-KEYWORD', 'host-keyword': 'DOMAIN-KEYWORD',
+    'HOST-WILDCARD': 'DOMAIN-WILDCARD', 'host-wildcard': 'DOMAIN-WILDCARD',
+    'IP6-CIDR': 'IP-CIDR6', 'ip6-cidr': 'IP-CIDR6',
+    'ip-cidr': 'IP-CIDR', 'domain': 'DOMAIN',
+    'domain-suffix': 'DOMAIN-SUFFIX', 'domain-keyword': 'DOMAIN-KEYWORD',
+    'domain-wildcard': 'DOMAIN-WILDCARD',
+    'user-agent': 'USER-AGENT', 'url-regex': 'URL-REGEX',
+    'process-name': 'PROCESS-NAME',
+}
+
+RULE_RE = re.compile(r'^([A-Za-z0-9\-]+),(.+?)(?:,([^,]+))?$')
 HOSTS_RE = re.compile(r'^(?:0\.0\.0\.0|127\.0\.0\.1)\s+(\S+)$')
-DOMAIN_RE = re.compile(r'^[a-z0-9]([a-z0-9\-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9\-]*[a-z0-9])?)*$', re.IGNORECASE)
+DOMAIN_RE = re.compile(
+    r'^[a-z0-9]([a-z0-9\-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9\-]*[a-z0-9])?)*$',
+    re.IGNORECASE,
+)
 SUFFIX_NO_RESOLVE_RE = re.compile(r',no-resolve\s*$', flags=re.IGNORECASE)
 SUFFIX_POLICY_RE = re.compile(r',(DIRECT|REJECT|PROXY)\s*$', flags=re.IGNORECASE)
 
 
 # ──────────────────────────────────────────────
-# 1. 下载规则文件 (带重试与异常处理)
+# 1. 下载规则文件
 # ──────────────────────────────────────────────
 
 def download_rules(url: str, retries: int = 3) -> list[str]:
-    """下载单个规则文件，返回行列表，带重试机制"""
     for attempt in range(retries):
         try:
             req = urllib.request.Request(
                 url,
-                headers={
-                    'User-Agent': USER_AGENT,
-                    'Accept-Language': 'en-us',
-                }
+                headers={'User-Agent': USER_AGENT, 'Accept-Language': 'en-us'},
             )
             with urllib.request.urlopen(req, timeout=TIMEOUT) as response:
                 content = response.read().decode('utf-8', errors='ignore')
                 return content.splitlines()
         except Exception as e:
             if attempt < retries - 1:
-                time.sleep(2)  # 失败后稍作等待再重试
+                time.sleep(2)
             else:
                 print(f"[WARN] 下载失败 ({attempt+1}/{retries}): {url} -> {e}")
     return []
@@ -81,53 +82,34 @@ def download_rules(url: str, retries: int = 3) -> list[str]:
 # ──────────────────────────────────────────────
 
 def normalize_line(raw: str) -> Optional[str]:
-    """标准化单行规则"""
     line = raw.strip()
 
-    # 过滤无效行
     if not line or line.startswith(('#', ';', '!', '@', '[', '<')):
         return None
-    if '\t' in line:
-        return None
 
-    # Adblock 语法：||example.com^
+    # 统一 tab → 空格（兼容 hosts 文件）
+    line = line.replace('\t', ' ')
+
+    # Adblock: ||example.com^
     if line.startswith('||'):
         domain = line[2:].split('^')[0].strip()
         if '@' in domain or not domain:
             return None
-        return f"DOMAIN-SUFFIX,{domain}"
+        return f"DOMAIN-SUFFIX,{domain.lower()}"
 
-    # hosts 格式：0.0.0.0 example.com
+    # hosts: 0.0.0.0 example.com
     m = HOSTS_RE.match(line)
     if m:
         domain = m.group(1)
         if domain in ('localhost', '0.0.0.0', '127.0.0.1', '::1'):
             return None
-        return f"DOMAIN,{domain}"
+        return f"DOMAIN,{domain.lower()}"
 
-    # 纯域名（无前缀）
+    # 纯域名
     if DOMAIN_RE.match(line):
         return f"DOMAIN,{line.lower()}"
 
-    # 统一别名
-    line = (line
-            .replace('host-wildcard',  'DOMAIN-WILDCARD')
-            .replace('host-suffix',    'DOMAIN-SUFFIX')
-            .replace('host-keyword',   'DOMAIN-KEYWORD')
-            .replace('host',           'DOMAIN')
-            .replace('HOST-SUFFIX',    'DOMAIN-SUFFIX')
-            .replace('HOST-KEYWORD',   'DOMAIN-KEYWORD')
-            .replace('HOST',           'DOMAIN')
-            .replace('ip6-cidr',       'IP-CIDR6')
-            .replace('IP6-CIDR',       'IP-CIDR6')
-            .replace('domain-suffix',  'DOMAIN-SUFFIX')
-            .replace('domain-keyword', 'DOMAIN-KEYWORD')
-            .replace('domain',         'DOMAIN')
-            .replace('user-agent',     'USER-AGENT')
-            .replace('ip-cidr',        'IP-CIDR')           
-    )
-    
-    # 删除 no-resolve / policy 等后缀
+    # 删除 no-resolve / policy 后缀
     line = SUFFIX_NO_RESOLVE_RE.sub('', line)
     line = SUFFIX_POLICY_RE.sub('', line)
 
@@ -137,22 +119,22 @@ def normalize_line(raw: str) -> Optional[str]:
 
     rtype, value = m.group(1), m.group(2).strip()
 
+    # 类型别名统一（只对 rtype，不污染 value）
+    rtype = TYPE_ALIAS.get(rtype, rtype)
+
     if rtype not in VALID_TYPES:
         return None
 
     # 复合规则原样返回
     if rtype in ('AND', 'OR', 'NOT'):
-        return line
+        return f"{rtype},{value}"
 
-    # 域名规则处理
-    if rtype in ('DOMAIN', 'DOMAIN-SUFFIX', 'DOMAIN-KEYWORD'):
-        value = value.lower()
-        if not value or '*' in value:
+    # 域名规则
+    if rtype in ('DOMAIN', 'DOMAIN-SUFFIX', 'DOMAIN-KEYWORD', 'DOMAIN-WILDCARD'):
+        value = value.lower().lstrip('*.')
+        if not value or ('*' in value and rtype != 'DOMAIN-WILDCARD'):
             return None
-        # 去掉开头的通配点
-        value = value.lstrip('*.')
-        # 验证域名合法性（基本检查）
-        if not DOMAIN_RE.match(value):
+        if rtype != 'DOMAIN-WILDCARD' and not DOMAIN_RE.match(value):
             return None
 
     # IP 标准化
@@ -167,28 +149,31 @@ def normalize_line(raw: str) -> Optional[str]:
 
 
 # ──────────────────────────────────────────────
-# 3. 域名 Trie 树与关键词加速去重
+# 3. 域名 Trie 树与关键词去重
 # ──────────────────────────────────────────────
 
 class DomainTree:
     def __init__(self):
         self._trie = {}
-        self._keywords = []
+        self._keywords: list[str] = []
         self._keyword_regex = None
+        self._built = False
 
     def add_keyword(self, kw: str):
         if kw:
             self._keywords.append(kw)
+            self._built = False
 
     def build_keyword_matcher(self):
         if self._keywords:
-            escaped_kws = [re.escape(kw) for kw in self._keywords]
-            self._keyword_regex = re.compile('|'.join(escaped_kws))
+            escaped = [re.escape(kw) for kw in self._keywords]
+            self._keyword_regex = re.compile('|'.join(escaped))
+        self._built = True
 
-    def _covered_by_keyword(self, domain: str) -> bool:
+    def covered_by_keyword(self, domain: str) -> bool:
         if not self._keywords:
             return False
-        if self._keyword_regex is None:
+        if not self._built:
             self.build_keyword_matcher()
         return self._keyword_regex.search(domain) is not None
 
@@ -217,7 +202,7 @@ class DomainTree:
         return '__end__' in node
 
     def add(self, rtype: str, value: str) -> bool:
-        if self._covered_by_keyword(value):
+        if self.covered_by_keyword(value):
             return False
         if rtype == 'DOMAIN-SUFFIX':
             return self._insert_suffix(value)
@@ -253,7 +238,7 @@ def aggregate_cidrs(networks: list[str], version: int) -> list[str]:
 def process_rule_directory(rule_dir: Path):
     rule_dir = Path(rule_dir).resolve()
     attach_dir = rule_dir / 'attach'
-    
+
     rule_list_file = attach_dir / 'rule-list.ini'
     del_file = attach_dir / 'del.ini'
     add_file = attach_dir / 'add.ini'
@@ -267,23 +252,25 @@ def process_rule_directory(rule_dir: Path):
         print(f"[ERROR] 找不到 {rule_list_file}")
         return
 
-    # ── 1. 读取 URL 列表 ──────────────────────
+    # ── 1. 读取 URL 列表（保序去重）──────────────
     urls = []
+    seen_urls = set()
     with open(rule_list_file, 'r', encoding='utf-8', errors='ignore') as f:
         for line in f:
             line = line.strip()
             if line and not line.startswith('#'):
                 url = line.split()[0]
-                if url.startswith('http'):
+                if url.startswith('http') and url not in seen_urls:
                     urls.append(url)
+                    seen_urls.add(url)
 
     if not urls:
         print("[WARN] rule-list.ini 中没有有效 URL")
         return
 
-    # ── 2. 并发下载所有规则 ───────────────────────
-    all_lines = []
-    
+    # ── 2. 并发下载 ───────────────────────────
+    all_lines: list[str] = []
+
     def fetch(url):
         return url, download_rules(url)
 
@@ -298,12 +285,14 @@ def process_rule_directory(rule_dir: Path):
     # ── 3. 读取 add.ini ───────────────────────
     if add_file.exists():
         with open(add_file, 'r', encoding='utf-8', errors='ignore') as f:
-            all_lines.extend(f.readlines())
-        print(f"\n[INFO] 加载手动规则: {add_file.name}")
+            add_lines = f.read().splitlines()
+        all_lines.extend(add_lines)
+        print(f"\n[INFO] 加载手动规则: {add_file.name} ({len(add_lines)} 行)")
 
-    # ── 4. 读取 del.ini 并解析标签与后缀过滤 ──────
-    pre_tags = []        # 标签模式（下载后立刻过滤）
-    post_filters = []    # 后缀模式（最后生成时过滤）
+    # ── 4. 读取 del.ini ───────────────────────
+    pre_tags: list[str] = []
+    post_exact: set[str] = set()
+    post_suffix: list[str] = []
 
     if del_file.exists():
         with open(del_file, 'r', encoding='utf-8', errors='ignore') as f:
@@ -313,27 +302,33 @@ def process_rule_directory(rule_dir: Path):
                     continue
                 if line.upper().startswith('TAG:'):
                     pre_tags.append(line[4:].strip())
+                elif ',' in line:
+                    post_exact.add(line)
                 else:
-                    post_filters.append(line)
-        post_filters = tuple(post_filters)
+                    post_suffix.append(line)
 
-    # ── 5. 执行标签模式预过滤 (刚下载完后) ───────
+    # ── 5. 标签预过滤 ─────────────────────────
     if pre_tags:
         original_count = len(all_lines)
-        all_lines = [line for line in all_lines if not any(tag in line for tag in pre_tags)]
+        all_lines = [
+            line for line in all_lines
+            if not any(tag in line for tag in pre_tags)
+        ]
         removed = original_count - len(all_lines)
         print(f"[INFO] 标签模式预过滤: 删除了 {removed} 条原始规则")
 
-    # ── 6. 标准化 ─────────────────────────────
-    print(f"[INFO] 标准化 {len(all_lines)} 行...")
-    buckets = defaultdict(list)
-    compound_rules = []
+    # ── 6. 原始行去重后再标准化 ─────────────────
+    unique_raw = set(all_lines)
+    print(f"[INFO] 原始行去重: {len(all_lines)} -> {len(unique_raw)}")
+    print(f"[INFO] 标准化 {len(unique_raw)} 行...")
 
-    for line in all_lines:
+    buckets: dict[str, list[str]] = defaultdict(list)
+    compound_rules: list[str] = []
+
+    for line in unique_raw:
         norm = normalize_line(line)
         if not norm:
             continue
-        
         rtype = norm.split(',', 1)[0]
         if rtype in ('AND', 'OR', 'NOT'):
             compound_rules.append(norm)
@@ -346,21 +341,30 @@ def process_rule_directory(rule_dir: Path):
     print("[INFO] 域名规则去重 (Trie & Regex 加速)...")
     tree = DomainTree()
 
+    # 关键词
     kw_kept = []
     for val in sorted(set(buckets.get('DOMAIN-KEYWORD', []))):
         tree.add_keyword(val)
         kw_kept.append(f"DOMAIN-KEYWORD,{val}")
     tree.build_keyword_matcher()
 
+    # 后缀（短的优先，确保父域先插入）
     suffix_kept = []
     for val in sorted(set(buckets.get('DOMAIN-SUFFIX', [])), key=len):
         if tree.add('DOMAIN-SUFFIX', val):
             suffix_kept.append(f"DOMAIN-SUFFIX,{val}")
 
+    # 精确域名
     domain_kept = []
     for val in sorted(set(buckets.get('DOMAIN', []))):
         if tree.add('DOMAIN', val):
             domain_kept.append(f"DOMAIN,{val}")
+
+    # 通配符域名（检查是否被 keyword/suffix 覆盖）
+    wildcard_kept = []
+    for val in sorted(set(buckets.get('DOMAIN-WILDCARD', []))):
+        if not tree.covered_by_keyword(val) and not tree._is_covered_by_suffix(val):
+            wildcard_kept.append(f"DOMAIN-WILDCARD,{val}")
 
     # ── 8. IP 聚合 ────────────────────────────
     print("[INFO] IP CIDR 聚合...")
@@ -368,63 +372,62 @@ def process_rule_directory(rule_dir: Path):
     ip6_rules = aggregate_cidrs(list(set(buckets.get('IP-CIDR6', []))), version=6)
 
     # ── 9. 其他规则 ───────────────────────────
+    SKIP_TYPES = {'DOMAIN', 'DOMAIN-SUFFIX', 'DOMAIN-KEYWORD', 'DOMAIN-WILDCARD', 'IP-CIDR', 'IP-CIDR6'}
     other_kept = []
     for rtype in buckets:
-        if rtype in ('DOMAIN', 'DOMAIN-SUFFIX', 'DOMAIN-KEYWORD', 'IP-CIDR', 'IP-CIDR6'):
+        if rtype in SKIP_TYPES:
             continue
         for val in sorted(set(buckets[rtype])):
             other_kept.append(f"{rtype},{val}")
 
     compound_kept = sorted(set(compound_rules))
 
-    # ── 10. 合并全部规则 ───────────────────────
+    # ── 10. 合并 ──────────────────────────────
     final_rules = (
-        compound_kept +
-        kw_kept +
-        suffix_kept +
-        domain_kept +
-        ip4_rules +
-        ip6_rules +
-        other_kept
+        compound_kept
+        + kw_kept
+        + suffix_kept
+        + domain_kept
+        + wildcard_kept
+        + ip4_rules
+        + ip6_rules
+        + other_kept
     )
 
-    # ── 11. 应用后缀过滤 ───────────────────────
-    if post_filters:
+    # ── 11. 后缀过滤 + 精确过滤 ─────────────────
+    if post_exact or post_suffix:
         original_count = len(final_rules)
-        final_rules = [r for r in final_rules if not r.endswith(post_filters)]
+        suffix_tuple = tuple(post_suffix) if post_suffix else ()
+        final_rules = [
+            r for r in final_rules
+            if r not in post_exact and (not suffix_tuple or not r.endswith(suffix_tuple))
+        ]
         removed = original_count - len(final_rules)
-        print(f"[INFO] 最终后缀过滤: 删除了 {removed} 条")
+        print(f"[INFO] 最终过滤: 删除了 {removed} 条")
 
     # ── 12. 过滤过短规则 ───────────────────────
     final_rules = [r for r in final_rules if len(r) > 5]
 
-    # ── 13. 全局规则排序 (按指定类型、顶级域名优先、字母序) ───
+    # ── 13. 排序 ──────────────────────────────
     def sort_rules_key(rule_line: str):
         parts = rule_line.split(',', 1)
         rtype = parts[0]
         value = parts[1] if len(parts) > 1 else ""
-        
-        # 1. 类型优先级 (未在 ORDER_DICT 中的类型置于最后)
         priority = ORDER_DICT.get(rtype, 999)
-        
-        # 2. 判断是否为顶级域名 (针对 DOMAIN 相关类型，且没有包含 ".")
         is_tld = 0 if (rtype.startswith('DOMAIN') and '.' not in value) else 1
-        
-        # 3. 返回排序权重: (类型优先级, 是否顶级域名, 规则全文本字母序)
         return (priority, is_tld, rule_line)
 
     final_rules.sort(key=sort_rules_key)
 
-    # ── 14. 写入输出 ──────────────────────────
+    # ── 14. 写入 ──────────────────────────────
     total = len(final_rules)
-    
     with open(output_file, 'w', encoding='utf-8') as f:
         f.write(f"# Total: {total} rules\n")
         f.write("# " + "=" * 66 + "\n")
         for r in final_rules:
             f.write(r + '\n')
 
-    # ── 15. 输出统计 ──────────────────────────
+    # ── 15. 统计 ──────────────────────────────
     rel_path = os.path.relpath(output_file)
     print("\n" + "=" * 70)
     print(f"✅ 处理完成: {rule_dir.name}")
