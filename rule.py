@@ -353,7 +353,7 @@ def process_rule_directory(rule_dir: Path):
     tree.build_keyword_matcher()
 
     suffix_kept = []
-    for val in sorted(set(buckets.get('DOMAIN-SUFFIX', []))):
+    for val in sorted(set(buckets.get('DOMAIN-SUFFIX', [])), key=len):
         if tree.add('DOMAIN-SUFFIX', val):
             suffix_kept.append(f"DOMAIN-SUFFIX,{val}")
 
