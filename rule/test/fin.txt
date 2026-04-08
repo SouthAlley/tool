@@ -1,16 +1,14 @@
-# Total: 356 rules
+# Total: 354 rules
 # ==================================================================
 DOMAIN-KEYWORD,blogspot
 DOMAIN-KEYWORD,github
 DOMAIN-KEYWORD,gitlab
 DOMAIN-KEYWORD,gmail
-DOMAIN-KEYWORD,google
 DOMAIN-KEYWORD,sci-hub
 DOMAIN-SUFFIX,aboutamazon.com
 DOMAIN-SUFFIX,ads-twitter.com
 DOMAIN-SUFFIX,aiv-cdn.net
 DOMAIN-SUFFIX,aiv-delivery.net
-DOMAIN-SUFFIX,amazon.co.jp
 DOMAIN-SUFFIX,amazon.com
 DOMAIN-SUFFIX,amazon.jobs
 DOMAIN-SUFFIX,amazonaws.com
