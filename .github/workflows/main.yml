@@ -20,7 +20,7 @@ jobs:
 
       - name: rules
         run: |
-          python rule_processor.py rule/test
+          python rule.py rule/test
 
       - name: 提交
         continue-on-error: false
