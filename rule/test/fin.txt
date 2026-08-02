@@ -1,11 +1,10 @@
-# Total: 4240 rules
+# Total: 4238 rules
 # ==================================================================
 AND,((IP-CIDR,101.126.58.201/32,no-resolve),(DEST-PORT,6443))
 AND,((IP-CIDR,110.249.199.75/32,no-resolve),(DEST-PORT,6443))
 AND,((IP-CIDR,111.225.147.191/32,no-resolve),(DEST-PORT,6443))
 AND,((IP-CIDR,111.63.61.101/32,no-resolve),(DEST-PORT,6443))
 AND,((IP-CIDR,220.243.141.0/32,no-resolve),(DEST-PORT,6443))
-DOMAIN,118.89.204.198
 DOMAIN,a.cpic.com.cn
 DOMAIN,a.wkanx.com
 DOMAIN,abema-adx.ameba.jp
@@ -4239,4 +4238,3 @@ IP-CIDR6,2001:240:bb46:8267:0:1:dae1:f840/128,no-resolve
 IP-CIDR6,2001:240:bb5f:1980:0:1:80b:ad00/128,no-resolve
 IP-CIDR6,2402:4e00:1200:ed00:0:9089:6dac:96b6/128,no-resolve
 IP-CIDR6,2402:db40:5100:1011::5/128,no-resolve
-USER-AGENT,AVOS*
