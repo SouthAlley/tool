@@ -1,4 +1,4 @@
-# Total: 4297 rules
+# Total: 4298 rules
 # ==================================================================
 AND,((DOMAIN-KEYWORD, -misc-), (DOMAIN-SUFFIX, zijieapi.com))
 AND,((DOMAIN-KEYWORD, adx-), (DOMAIN-SUFFIX, statisticslinks.com))
@@ -3873,6 +3873,7 @@ IP-CIDR,194.180.36.92/30,no-resolve
 IP-CIDR,194.180.36.96/32,no-resolve
 IP-CIDR,194.226.139.121/32,no-resolve
 IP-CIDR,194.226.139.7/32,no-resolve
+IP-CIDR,194.26.232.61/32,no-resolve
 IP-CIDR,194.59.220.161/32,no-resolve
 IP-CIDR,194.63.140.103/32,no-resolve
 IP-CIDR,194.63.143.61/32,no-resolve
