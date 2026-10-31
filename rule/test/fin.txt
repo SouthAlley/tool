@@ -1,4 +1,4 @@
-# Total: 4298 rules
+# Total: 4299 rules
 # ==================================================================
 AND,((DOMAIN-KEYWORD, -misc-), (DOMAIN-SUFFIX, zijieapi.com))
 AND,((DOMAIN-KEYWORD, adx-), (DOMAIN-SUFFIX, statisticslinks.com))
@@ -121,6 +121,7 @@ DOMAIN,api.zuihuimai.com
 DOMAIN,apiv4-iyes.youku.com
 DOMAIN,apm.gotokeep.com
 DOMAIN,app-ad.variflight.com
+DOMAIN,app-alpha.bytedance.net
 DOMAIN,app-log.dewu.com
 DOMAIN,app.bugsnag.com
 DOMAIN,app.getsentry.com
