@@ -1,4 +1,4 @@
-# Total: 4282 rules
+# Total: 4284 rules
 # ==================================================================
 AND,((DOMAIN-KEYWORD, -misc-), (DOMAIN-SUFFIX, zijieapi.com))
 AND,((DOMAIN-KEYWORD, adx-), (DOMAIN-SUFFIX, statisticslinks.com))
@@ -496,6 +496,7 @@ DOMAIN-SUFFIX,a.dangdang.com
 DOMAIN-SUFFIX,a.ki
 DOMAIN-SUFFIX,a.koudai.com
 DOMAIN-SUFFIX,a.market.xiaomi.com
+DOMAIN-SUFFIX,a.pemsrv.com
 DOMAIN-SUFFIX,a.shukriya90.com
 DOMAIN-SUFFIX,a.youdao.com
 DOMAIN-SUFFIX,a0.app.xiaomi.com
@@ -1893,6 +1894,7 @@ DOMAIN-SUFFIX,jihehuaban.com.cn
 DOMAIN-SUFFIX,jimdo.com
 DOMAIN-SUFFIX,jing.58.com
 DOMAIN-SUFFIX,jisucn.com
+DOMAIN-SUFFIX,jitrivppyz.in
 DOMAIN-SUFFIX,jiubuhua.com
 DOMAIN-SUFFIX,jizzads.com
 DOMAIN-SUFFIX,jknmthwd.xyz
@@ -3729,6 +3731,7 @@ IP-CIDR,172.255.6.107/32,no-resolve
 IP-CIDR,172.255.6.147/32,no-resolve
 IP-CIDR,172.255.6.219/32,no-resolve
 IP-CIDR,172.255.6.225/32,no-resolve
+IP-CIDR,172.255.6.254/32,no-resolve
 IP-CIDR,172.88.199.9/32,no-resolve
 IP-CIDR,173.208.96.42/31,no-resolve
 IP-CIDR,173.208.96.44/31,no-resolve
@@ -4127,7 +4130,6 @@ IP-CIDR,51.15.3.223/32,no-resolve
 IP-CIDR,51.178.76.105/32,no-resolve
 IP-CIDR,51.68.87.229/32,no-resolve
 IP-CIDR,51.77.227.97/32,no-resolve
-IP-CIDR,51.89.187.141/32,no-resolve
 IP-CIDR,51.91.211.94/32,no-resolve
 IP-CIDR,51.91.66.125/32,no-resolve
 IP-CIDR,52.15.34.25/32,no-resolve
