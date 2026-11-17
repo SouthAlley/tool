@@ -1,4 +1,4 @@
-# Total: 4288 rules
+# Total: 4291 rules
 # ==================================================================
 AND,((DOMAIN-KEYWORD, -misc-), (DOMAIN-SUFFIX, zijieapi.com))
 AND,((DOMAIN-KEYWORD, adx-), (DOMAIN-SUFFIX, statisticslinks.com))
@@ -1131,6 +1131,7 @@ DOMAIN-SUFFIX,bgg.baidu.com
 DOMAIN-SUFFIX,bhichong.com
 DOMAIN-SUFFIX,bianxian.com
 DOMAIN-SUFFIX,bianxianmao.com
+DOMAIN-SUFFIX,bid.shanghailingye.cn
 DOMAIN-SUFFIX,biddingos.com
 DOMAIN-SUFFIX,biddingx.com
 DOMAIN-SUFFIX,bidtheatre.com
@@ -1366,6 +1367,7 @@ DOMAIN-SUFFIX,d10lumateci472.cloudfront.net
 DOMAIN-SUFFIX,d227cncaprzd7y.cloudfront.net
 DOMAIN-SUFFIX,da.hunantv.com
 DOMAIN-SUFFIX,da.mgtv.com
+DOMAIN-SUFFIX,da.statisticslinks.com
 DOMAIN-SUFFIX,dafapromo.com
 DOMAIN-SUFFIX,daitdai.com
 DOMAIN-SUFFIX,daoyoudao.com
@@ -2922,6 +2924,7 @@ DOMAIN-SUFFIX,tjlog.ps.easou.com
 DOMAIN-SUFFIX,tjqonline.cn
 DOMAIN-SUFFIX,tk.baidu.cn
 DOMAIN-SUFFIX,tk.baidu.com
+DOMAIN-SUFFIX,tk.statisticslinks.com
 DOMAIN-SUFFIX,tkweb.baidu.com
 DOMAIN-SUFFIX,tmead.y.qq.com
 DOMAIN-SUFFIX,tmeadcomm.y.qq.com
