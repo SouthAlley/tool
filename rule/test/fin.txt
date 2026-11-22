@@ -1,4 +1,4 @@
-# Total: 4290 rules
+# Total: 4294 rules
 # ==================================================================
 AND,((DOMAIN-KEYWORD, -misc-), (DOMAIN-SUFFIX, zijieapi.com))
 AND,((DOMAIN-KEYWORD, adx-), (DOMAIN-SUFFIX, statisticslinks.com))
@@ -2323,6 +2323,10 @@ DOMAIN-SUFFIX,open.snssdk.com
 DOMAIN-SUFFIX,openadapi.fancydsp.com
 DOMAIN-SUFFIX,openapi-news.meizu.com
 DOMAIN-SUFFIX,openrcv.baidu.com
+DOMAIN-SUFFIX,openx.com
+DOMAIN-SUFFIX,openx.net
+DOMAIN-SUFFIX,openxenterprise.com
+DOMAIN-SUFFIX,openxmarket.asia
 DOMAIN-SUFFIX,optaim.com
 DOMAIN-SUFFIX,optimix.asia
 DOMAIN-SUFFIX,optimix.cn
@@ -2672,6 +2676,7 @@ DOMAIN-SUFFIX,sentiance.com
 DOMAIN-SUFFIX,sentry.music.163.com
 DOMAIN-SUFFIX,servebom.com
 DOMAIN-SUFFIX,servedby-buysellads.com
+DOMAIN-SUFFIX,servedbyopenx.com
 DOMAIN-SUFFIX,server.m.pp.cn
 DOMAIN-SUFFIX,server.mch3.com
 DOMAIN-SUFFIX,serverbid.com
@@ -3463,7 +3468,6 @@ DOMAIN-KEYWORD,o333o
 DOMAIN-KEYWORD,omgmta
 DOMAIN-KEYWORD,omniture
 DOMAIN-KEYWORD,onenews
-DOMAIN-KEYWORD,openx
 DOMAIN-KEYWORD,pagespeed-mod
 DOMAIN-KEYWORD,pangolin-dsp-toutiao
 DOMAIN-KEYWORD,pangolin-sdk-toutiao
